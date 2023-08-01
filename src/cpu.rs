@@ -15,11 +15,15 @@ impl Default for CPU {
 }
 
 impl CPU {
-    fn new(memory: Memory) -> Self {
+    pub fn new(memory: Memory) -> Self {
         CPU {
-            memory: memory,
+            memory,
             registers: Registers::default(),
             status: Status::default(),
         }
+    }
+
+    pub fn step(&mut self) -> bool {
+        let opcode: u8 = self.memory.read_byte(self.registers.program_counter);
     }
 }

@@ -1,4 +1,4 @@
-const DEFAULT_MEM_SIZE: usize = 65536;
+const DEFAULT_MEM_SIZE: u16 = 65536;
 
 // Macro for checking if index is in memory range
 macro_rules! assert_index {
@@ -13,7 +13,7 @@ macro_rules! assert_index {
 }
 
 pub struct Memory {
-    size: usize,
+    size: u16,
     array: Vec<u8>,
 }
 
@@ -24,31 +24,31 @@ impl Default for Memory {
 }
 
 impl Memory {
-    fn new(size: usize) -> Self {
+    pub fn new(size: u16) -> Self {
         Memory {
             size: size,
-            array: vec![0; size],
+            array: vec![0; size as usize],
         }
     }
 
-    fn get_byte(&mut self, index: usize) -> u8 {
+    pub fn read_byte(&mut self, index: u16) -> u8 {
         assert_index!(index, self.size);
-        self.array[index]
+        self.array[index as usize]
     }
 
-    fn set_byte(&mut self, index: usize, value: u8) {
+    pub fn set_byte(&mut self, index: u16, value: u8) {
         assert_index!(index, self.size);
-        self.array[index] = value;
+        self.array[index as usize] = value;
     }
 
-    fn set_bytes(&mut self, index: usize, values: &[u8]) {
-        let (start, end) = (index, index + values.len());
+    pub fn set_bytes(&mut self, index: u16, values: &[u8]) {
+        let (start, end) = (index, index + values.len() as u16);
 
         // Check if both are in bounds
         assert_index!(start, self.size);
         assert_index!(end, self.size);
 
-        self.array[start..end].copy_from_slice(values);
+        self.array[(start as usize)..(end as usize)].copy_from_slice(values);
     }
 }
 
@@ -58,14 +58,14 @@ mod tests {
 
     #[test]
     #[should_panic]
-    fn test_assert_get() {
+    fn test_assert_read_byte() {
         let mut memory = Memory::default();
-        memory.get_byte(70000);
+        memory.read_byte(70000);
     }
 
     #[test]
     #[should_panic]
-    fn test_assert_set() {
+    fn test_assert_set_byte() {
         let mut memory = Memory::default();
         memory.set_byte(70000, 2);
     }
