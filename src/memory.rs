@@ -4,13 +4,17 @@ const DEFAULT_MEM_SIZE: usize = 65536;
 macro_rules! assert_index {
     ($index:expr, $mem_size:expr) => {
         // Index is usize, so only check for upper out of bounds
-        assert!($index < $mem_size, "[ERROR]: index {} went out of bounds!", $index);
+        assert!(
+            $index < $mem_size,
+            "[ERROR]: index {} went out of bounds!",
+            $index
+        );
     };
-} 
+}
 
-struct Memory {
+pub struct Memory {
     size: usize,
-    array: Vec<u8>
+    array: Vec<u8>,
 }
 
 impl Default for Memory {
@@ -23,7 +27,7 @@ impl Memory {
     fn new(size: usize) -> Self {
         Memory {
             size: size,
-            array: vec![0; size]
+            array: vec![0; size],
         }
     }
 
