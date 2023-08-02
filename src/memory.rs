@@ -1,4 +1,4 @@
-const DEFAULT_MEM_SIZE: u16 = 65536;
+const DEFAULT_MEM_SIZE: usize = 65536;
 
 // Macro for checking if index is in memory range
 macro_rules! assert_index {
@@ -13,7 +13,6 @@ macro_rules! assert_index {
 }
 
 pub struct Memory {
-    size: u16,
     array: Vec<u8>,
 }
 
@@ -24,31 +23,30 @@ impl Default for Memory {
 }
 
 impl Memory {
-    pub fn new(size: u16) -> Self {
+    pub fn new(size: usize) -> Self {
         Memory {
-            size: size,
-            array: vec![0; size as usize],
+            array: vec![0; size],
         }
     }
 
     pub fn read_byte(&mut self, index: u16) -> u8 {
-        assert_index!(index, self.size);
+        assert_index!(index as usize, self.array.len());
         self.array[index as usize]
     }
 
     pub fn set_byte(&mut self, index: u16, value: u8) {
-        assert_index!(index, self.size);
+        assert_index!(index as usize, self.array.len());
         self.array[index as usize] = value;
     }
 
     pub fn set_bytes(&mut self, index: u16, values: &[u8]) {
-        let (start, end) = (index, index + values.len() as u16);
+        let (start, end) = (index as usize, index as usize + values.len());
 
         // Check if both are in bounds
-        assert_index!(start, self.size);
-        assert_index!(end, self.size);
+        assert_index!(start, self.array.len());
+        assert_index!(end, self.array.len());
 
-        self.array[(start as usize)..(end as usize)].copy_from_slice(values);
+        self.array[start..end].copy_from_slice(values);
     }
 }
 
@@ -59,15 +57,15 @@ mod tests {
     #[test]
     #[should_panic]
     fn test_assert_read_byte() {
-        let mut memory = Memory::default();
-        memory.read_byte(70000);
+        let mut memory = Memory::new(48000);
+        memory.read_byte(50000);
     }
 
     #[test]
     #[should_panic]
     fn test_assert_set_byte() {
-        let mut memory = Memory::default();
-        memory.set_byte(70000, 2);
+        let mut memory = Memory::new(48000);
+        memory.set_byte(50000, 2);
     }
 
     #[test]
