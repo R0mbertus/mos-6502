@@ -13,7 +13,7 @@ impl Default for Registers {
 }
 
 impl Registers {
-    fn new() -> Self {
+    pub fn new() -> Self {
         Registers {
             x: 0,
             y: 0,
