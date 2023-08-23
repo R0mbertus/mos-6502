@@ -1,4 +1,4 @@
-use crate::{memory::{Memory, self}, status::Status, registers::Registers};
+use crate::memory::Memory;
 
 #[derive(Clone, Copy)]
 pub enum AddressingMode {
@@ -40,7 +40,11 @@ impl AddressingMode {
         unimplemented!()
     }
 
-    pub fn get_address(&self) -> [u8; 2] {
+    pub fn get_address_u8(&self, memory: &Memory, pc: u16) -> &mut u8 {
+        unimplemented!()
+    }
+
+    pub fn get_address_u16(&self, memory: &Memory, pc: u16) -> &mut u16 {
         unimplemented!()
     }
 }
@@ -52,7 +56,7 @@ macro_rules! addressing_instructions {
                 $instruction(AddressingMode),
             )*
         }
-        
+
         impl Instruction {
             pub fn addressing_mode(&self) -> &AddressingMode {
                 match self {
@@ -66,12 +70,9 @@ macro_rules! addressing_instructions {
 }
 
 addressing_instructions!(
-    ADC, AND, ASL, BCC, BCS, BEQ, BIT, BMI, BNE, BPL,
-    BRK, BVC, BVS, CLC, CLD, CLI, CLV, CMP, CPX, CPY,
-    DEC, DEX, DEY, EOR, INC, INX, INY, JMP, JSR, LDA,
-    LDX, LDY, LSR, NOP, ORA, PHA, PHP, PLA, PLP, ROL,
-    ROR, RTI, RTS, SBC, SEC, SED, SEI, STA, STX, STY,
-    TAX, TAY, TSX, TXA, TXS, TYA
+    ADC, AND, ASL, BCC, BCS, BEQ, BIT, BMI, BNE, BPL, BRK, BVC, BVS, CLC, CLD, CLI, CLV, CMP, CPX,
+    CPY, DEC, DEX, DEY, EOR, INC, INX, INY, JMP, JSR, LDA, LDX, LDY, LSR, NOP, ORA, PHA, PHP, PLA,
+    PLP, ROL, ROR, RTI, RTS, SBC, SEC, SED, SEI, STA, STX, STY, TAX, TAY, TSX, TXA, TXS, TYA
 );
 
 impl Instruction {
