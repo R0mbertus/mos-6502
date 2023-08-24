@@ -48,9 +48,217 @@ impl CPU {
                 CPU::asl(&mut self.registers, am.get_address_u8(&self.memory, pc));
             }
             Instruction::BCC(am) => {
-                CPU::bcc(&mut self.registers, am.get_data(&self.memory, pc));
+                let condition = !self.registers.status.carry;
+                CPU::branch(
+                    &mut self.registers,
+                    condition,
+                    am.get_data(&self.memory, pc),
+                );
             }
-            _ => unimplemented!(),
+            Instruction::BCS(am) => {
+                let condition = self.registers.status.carry;
+                CPU::branch(
+                    &mut self.registers,
+                    condition,
+                    am.get_data(&self.memory, pc),
+                );
+            }
+            Instruction::BEQ(am) => {
+                let condition = self.registers.status.zero;
+                CPU::branch(
+                    &mut self.registers,
+                    condition,
+                    am.get_data(&self.memory, pc),
+                );
+            }
+            Instruction::BIT(am) => {
+                CPU::bit(&mut self.registers, am.get_data(&self.memory, pc) as u8);
+            }
+            Instruction::BMI(am) => {
+                let condition = self.registers.status.negative;
+                CPU::branch(
+                    &mut self.registers,
+                    condition,
+                    am.get_data(&self.memory, pc),
+                );
+            }
+            Instruction::BNE(am) => {
+                let condition = !self.registers.status.zero;
+                CPU::branch(
+                    &mut self.registers,
+                    condition,
+                    am.get_data(&self.memory, pc),
+                );
+            }
+            Instruction::BPL(am) => {
+                let condition = !self.registers.status.negative;
+                CPU::branch(
+                    &mut self.registers,
+                    condition,
+                    am.get_data(&self.memory, pc),
+                );
+            }
+            Instruction::BRK(_am) => {
+                CPU::brk(&mut self.registers);
+            }
+            Instruction::BVC(am) => {
+                let condition = !self.registers.status.overflow;
+                CPU::branch(
+                    &mut self.registers,
+                    condition,
+                    am.get_data(&self.memory, pc),
+                );
+            }
+            Instruction::BVS(am) => {
+                let condition = self.registers.status.overflow;
+                CPU::branch(
+                    &mut self.registers,
+                    condition,
+                    am.get_data(&self.memory, pc),
+                );
+            }
+            Instruction::CLC(_am) => {
+                self.registers.status.carry = false;
+            }
+            Instruction::CLD(_am) => {
+                self.registers.status.decimal = false;
+            }
+            Instruction::CLI(_am) => {
+                self.registers.status.disable_interrupt = false;
+            }
+            Instruction::CLV(_am) => {
+                self.registers.status.overflow = false;
+            }
+            Instruction::CMP(am) => {
+                let value_lhs = self.registers.accumilator;
+                CPU::compare(
+                    &mut self.registers,
+                    value_lhs,
+                    am.get_data(&self.memory, pc) as u8,
+                );
+            }
+            Instruction::CPX(am) => {
+                let value_lhs = self.registers.x;
+                CPU::compare(
+                    &mut self.registers,
+                    value_lhs,
+                    am.get_data(&self.memory, pc) as u8,
+                );
+            }
+            Instruction::CPY(am) => {
+                let value_lhs = self.registers.y;
+                CPU::compare(
+                    &mut self.registers,
+                    value_lhs,
+                    am.get_data(&self.memory, pc) as u8,
+                );
+            }
+            Instruction::DEC(am) => {
+                unimplemented!()
+            }
+            Instruction::DEX(am) => {
+                unimplemented!()
+            }
+            Instruction::DEY(am) => {
+                unimplemented!()
+            }
+            Instruction::EOR(am) => {
+                unimplemented!()
+            }
+            Instruction::INC(am) => {
+                unimplemented!()
+            }
+            Instruction::INX(am) => {
+                unimplemented!()
+            }
+            Instruction::INY(am) => {
+                unimplemented!()
+            }
+            Instruction::JMP(am) => {
+                unimplemented!()
+            }
+            Instruction::JSR(am) => {
+                unimplemented!()
+            }
+            Instruction::LDA(am) => {
+                unimplemented!()
+            }
+            Instruction::LDX(am) => {
+                unimplemented!()
+            }
+            Instruction::LDY(am) => {
+                unimplemented!()
+            }
+            Instruction::LSR(am) => {
+                unimplemented!()
+            }
+            Instruction::NOP(_am) => {}
+            Instruction::ORA(am) => {
+                unimplemented!()
+            }
+            Instruction::PHA(am) => {
+                unimplemented!()
+            }
+            Instruction::PHP(am) => {
+                unimplemented!()
+            }
+            Instruction::PLA(am) => {
+                unimplemented!()
+            }
+            Instruction::PLP(am) => {
+                unimplemented!()
+            }
+            Instruction::ROL(am) => {
+                unimplemented!()
+            }
+            Instruction::ROR(am) => {
+                unimplemented!()
+            }
+            Instruction::RTI(am) => {
+                unimplemented!()
+            }
+            Instruction::RTS(am) => {
+                unimplemented!()
+            }
+            Instruction::SBC(am) => {
+                unimplemented!()
+            }
+            Instruction::SEC(am) => {
+                unimplemented!()
+            }
+            Instruction::SED(am) => {
+                unimplemented!()
+            }
+            Instruction::SEI(am) => {
+                unimplemented!()
+            }
+            Instruction::STA(am) => {
+                unimplemented!()
+            }
+            Instruction::STX(am) => {
+                unimplemented!()
+            }
+            Instruction::STY(am) => {
+                unimplemented!()
+            }
+            Instruction::TAX(am) => {
+                unimplemented!()
+            }
+            Instruction::TAY(am) => {
+                unimplemented!()
+            }
+            Instruction::TSX(am) => {
+                unimplemented!()
+            }
+            Instruction::TXA(am) => {
+                unimplemented!()
+            }
+            Instruction::TXS(am) => {
+                unimplemented!()
+            }
+            Instruction::TYA(am) => {
+                unimplemented!()
+            }
         }
 
         unimplemented!()
@@ -86,9 +294,27 @@ impl CPU {
         *mem_value <<= 1;
     }
 
-    fn bcc(registers: &mut Registers, value: u16) {
-        if registers.status.carry {
+    fn branch(registers: &mut Registers, condition: bool, value: u16) {
+        if condition {
             registers.program_counter = value;
         }
+    }
+
+    fn bit(registers: &mut Registers, value: u8) {
+        registers.status.zero = registers.accumilator ^ value == 0;
+        registers.status.overflow = (value & 0x40) != 0;
+        registers.status.negative = (value & 0x80) != 0;
+    }
+
+    //TODO: implement stack
+    fn brk(registers: &mut Registers) {
+        unimplemented!();
+    }
+
+    fn compare(registers: &mut Registers, value_lhs: u8, value_rhs: u8) {
+        let result = value_lhs - value_rhs;
+        registers.status.zero = value_lhs == value_rhs;
+        registers.status.negative = result & 0x80 != 0;
+        registers.status.carry = value_lhs >= value_rhs;
     }
 }
