@@ -1,6 +1,6 @@
 use crate::instructions::Instruction;
 use crate::memory::Memory;
-use crate::registers::Registers;
+use crate::registers::{Registers, Status};
 
 pub struct CPU {
     memory: Memory,
@@ -36,15 +36,12 @@ impl CPU {
 
         match opcode {
             Instruction::ADC(am) => {
-                dbg!("[EXECUTING]: add with carry, am: {am}");
                 CPU::adc(&mut self.registers, am.get_data(&self.memory, pc) as u8);
             }
             Instruction::AND(am) => {
-                dbg!("[EXECUTING]: and operation, am: {am}");
                 CPU::and(&mut self.registers, am.get_data(&self.memory, pc) as u8);
             }
             Instruction::ASL(am) => {
-                dbg!("[EXECUTING]: arithmetic shift left, am: {am}");
                 CPU::asl(&mut self.registers, am.get_address_u8(&self.memory, pc));
             }
             Instruction::BCC(am) => {
@@ -154,47 +151,47 @@ impl CPU {
                 );
             }
             Instruction::DEC(am) => {
-                unimplemented!()
+                CPU::decrement(&mut self.registers.status, am.get_address_u8(&self.memory, pc));
             }
-            Instruction::DEX(am) => {
-                unimplemented!()
+            Instruction::DEX(_am) => {
+                CPU::decrement(&mut self.registers.status, &mut self.registers.x);
             }
-            Instruction::DEY(am) => {
-                unimplemented!()
+            Instruction::DEY(_am) => {
+                CPU::decrement(&mut self.registers.status, &mut self.registers.y);
             }
             Instruction::EOR(am) => {
-                unimplemented!()
+                CPU::eor(&mut self.registers, am.get_data(&self.memory, pc) as u8);
             }
             Instruction::INC(am) => {
-                unimplemented!()
+                CPU::increment(&mut self.registers.status, am.get_address_u8(&self.memory, pc));
             }
-            Instruction::INX(am) => {
-                unimplemented!()
+            Instruction::INX(_am) => {
+                CPU::increment(&mut self.registers.status, &mut self.registers.x);
             }
-            Instruction::INY(am) => {
-                unimplemented!()
+            Instruction::INY(_am) => {
+                CPU::increment(&mut self.registers.status, &mut self.registers.y);
             }
             Instruction::JMP(am) => {
-                unimplemented!()
+                CPU::jmp(&mut self.registers, am.get_data(&self.memory, pc));
             }
             Instruction::JSR(am) => {
-                unimplemented!()
+                CPU::jsr(&mut self.registers, am.get_data(&self.memory, pc));
             }
             Instruction::LDA(am) => {
-                unimplemented!()
+                self.registers.accumilator = am.get_data(&self.memory, pc) as u8;
             }
             Instruction::LDX(am) => {
-                unimplemented!()
+                self.registers.x = am.get_data(&self.memory, pc) as u8;
             }
             Instruction::LDY(am) => {
-                unimplemented!()
+                self.registers.y = am.get_data(&self.memory, pc) as u8;
             }
             Instruction::LSR(am) => {
-                unimplemented!()
+                CPU::lsr(&mut self.registers, am.get_address_u8(&self.memory, pc));
             }
             Instruction::NOP(_am) => {}
             Instruction::ORA(am) => {
-                unimplemented!()
+                CPU::ora(&mut self.registers, am.get_data(&self.memory, pc) as u8);
             }
             Instruction::PHA(am) => {
                 unimplemented!()
@@ -209,10 +206,10 @@ impl CPU {
                 unimplemented!()
             }
             Instruction::ROL(am) => {
-                unimplemented!()
+                CPU::rol(&mut self.registers, am.get_address_u8(&self.memory, pc));
             }
             Instruction::ROR(am) => {
-                unimplemented!()
+                CPU::ror(&mut self.registers, am.get_address_u8(&self.memory, pc));
             }
             Instruction::RTI(am) => {
                 unimplemented!()
@@ -221,43 +218,43 @@ impl CPU {
                 unimplemented!()
             }
             Instruction::SBC(am) => {
-                unimplemented!()
+                CPU::sbc(&mut self.registers, am.get_data(&self.memory, pc) as u8);
             }
-            Instruction::SEC(am) => {
-                unimplemented!()
+            Instruction::SEC(_am) => {
+                self.registers.status.carry = true;
             }
-            Instruction::SED(am) => {
-                unimplemented!()
+            Instruction::SED(_am) => {
+                self.registers.status.decimal = true;
             }
-            Instruction::SEI(am) => {
-                unimplemented!()
+            Instruction::SEI(_am) => {
+                self.registers.status.disable_interrupt = true;
             }
             Instruction::STA(am) => {
-                unimplemented!()
+                *am.get_address_u8(&self.memory, pc) = self.registers.accumilator;
             }
             Instruction::STX(am) => {
-                unimplemented!()
+                *am.get_address_u8(&self.memory, pc) = self.registers.x;
             }
             Instruction::STY(am) => {
-                unimplemented!()
+                *am.get_address_u8(&self.memory, pc) = self.registers.y;
             }
-            Instruction::TAX(am) => {
-                unimplemented!()
+            Instruction::TAX(_am) => {
+                CPU::transfer(&mut self.registers.status, self.registers.accumilator, &mut self.registers.x);
             }
-            Instruction::TAY(am) => {
-                unimplemented!()
+            Instruction::TAY(_am) => {
+                CPU::transfer(&mut self.registers.status, self.registers.accumilator, &mut self.registers.y);
             }
-            Instruction::TSX(am) => {
-                unimplemented!()
+            Instruction::TSX(_am) => {
+                CPU::transfer(&mut self.registers.status, self.registers.stack_pointer, &mut self.registers.x);
             }
-            Instruction::TXA(am) => {
-                unimplemented!()
+            Instruction::TXA(_am) => {
+                CPU::transfer(&mut self.registers.status, self.registers.x, &mut self.registers.accumilator);
             }
-            Instruction::TXS(am) => {
-                unimplemented!()
+            Instruction::TXS(_am) => {
+                CPU::txs(&mut self.registers);
             }
-            Instruction::TYA(am) => {
-                unimplemented!()
+            Instruction::TYA(_am) => {
+                CPU::transfer(&mut self.registers.status, self.registers.y, &mut self.registers.accumilator);
             }
         }
 
@@ -266,15 +263,14 @@ impl CPU {
 
     // TODO: add digit mode
     fn adc(registers: &mut Registers, value: u8) {
-        let acc_old = registers.accumilator;
         let carry_old = registers.status.carry as u8;
-        let (result, carry) = acc_old.wrapping_add(carry_old).overflowing_add(value);
+        let (result, carry) = registers.accumilator.wrapping_add(carry_old).overflowing_add(value);
 
         registers.status.carry = carry;
         registers.status.negative = (result & 0x80) != 0;
         registers.status.zero = result == 0;
-        registers.status.overflow = (acc_old > 127 && value > 127 && result < 128)
-            || (acc_old < 128 && carry_old < 128 && result > 127);
+        registers.status.overflow = (registers.accumilator > 127 && value > 127 && result < 128)
+            || (registers.accumilator < 128 && carry_old < 128 && result > 127);
 
         registers.accumilator = result;
     }
@@ -291,7 +287,7 @@ impl CPU {
         registers.status.negative = (*mem_value & 0x40) != 0;
         registers.status.zero = *mem_value == 0x80;
 
-        *mem_value <<= 1;
+        *mem_value >>= 1;
     }
 
     fn branch(registers: &mut Registers, condition: bool, value: u16) {
@@ -301,7 +297,7 @@ impl CPU {
     }
 
     fn bit(registers: &mut Registers, value: u8) {
-        registers.status.zero = registers.accumilator ^ value == 0;
+        registers.status.zero = (registers.accumilator & value) == 0;
         registers.status.overflow = (value & 0x40) != 0;
         registers.status.negative = (value & 0x80) != 0;
     }
@@ -312,9 +308,84 @@ impl CPU {
     }
 
     fn compare(registers: &mut Registers, value_lhs: u8, value_rhs: u8) {
-        let result = value_lhs - value_rhs;
+        let result = value_lhs.wrapping_sub(value_rhs);
         registers.status.zero = value_lhs == value_rhs;
         registers.status.negative = result & 0x80 != 0;
         registers.status.carry = value_lhs >= value_rhs;
+    }
+
+    fn decrement(status: &mut Status, mem_value: &mut u8) {
+        let result = mem_value.wrapping_sub(1);
+        status.negative = (result & 0x80) != 0;
+        status.zero = result == 0;
+        *mem_value = result;
+    }
+
+    fn eor(registers: &mut Registers, value: u8) {
+        registers.accumilator ^= value;
+        registers.status.zero = registers.accumilator == 0;
+        registers.status.negative = (registers.accumilator & 0x80) != 0
+    }
+
+    fn increment(status: &mut Status, mem_value: &mut u8) {
+        let result = mem_value.wrapping_add(1);
+        status.negative = (result & 0x80) != 0;
+        status.zero = result == 0;
+        *mem_value = result;
+    }
+
+    fn jmp(registers: &mut Registers, value: u16) {
+        registers.program_counter = value;
+    }
+
+    //TODO: implement stack
+    fn jsr(registers: &mut Registers, value: u16) {
+        unimplemented!()
+    }
+
+    fn lsr(registers: &mut Registers, mem_value: &mut u8) {
+        registers.status.carry = (*mem_value & 0x1) != 0;
+        registers.status.negative = false;
+        *mem_value >>= 1;
+        registers.status.zero = *mem_value == 0;
+    }
+
+    fn ora(registers: &mut Registers, value: u8) {
+        registers.accumilator |= value;
+        registers.status.zero = registers.accumilator == 0;
+        registers.status.negative = (registers.accumilator & 0x80) != 0;
+    }
+
+    fn rol(registers: &mut Registers, mem_value: &mut u8) {
+        registers.status.carry = (*mem_value & 0x80) != 0;
+        registers.status.negative = (*mem_value & 0x40) != 0;
+        *mem_value = mem_value.rotate_left(1);
+        registers.status.zero = *mem_value == 0;
+    }
+
+    fn ror(registers: &mut Registers, mem_value: &mut u8) {
+        registers.status.carry = (*mem_value & 0x80) != 0;
+        registers.status.negative = (*mem_value & 0x40) != 0;
+        *mem_value = mem_value.rotate_right(1);
+        registers.status.zero = *mem_value == 0;
+    }
+
+    fn sbc(registers: &mut Registers, value: u8) {
+        let not_carry = !registers.status.carry as u8;
+        let result = registers.accumilator.wrapping_sub(value).wrapping_sub(not_carry);
+        registers.status.carry = result > registers.accumilator;
+        registers.status.overflow = (not_carry == 0 && value > 127) && registers.accumilator < 128 && result > 127
+            || (registers.accumilator > 127) && (value > 127) && result < 128;
+        registers.accumilator = result;
+    }
+
+    fn transfer(status: &mut Status, value_lhs: u8, value_rhs: &mut u8) {
+        status.zero = value_lhs == 0;
+        status.negative = (value_lhs & 0x80) != 0;
+        *value_rhs = value_lhs;
+    }
+
+    fn txs(registers: &mut Registers) {
+        registers.stack_pointer = registers.x;
     }
 }
