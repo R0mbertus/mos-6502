@@ -29,17 +29,27 @@ impl Memory {
         }
     }
 
-    pub fn read_byte(&mut self, index: u16) -> u8 {
+    pub fn get_byte(&self, index: u16) -> u8 {
         assert_index!(index as usize, self.array.len());
         self.array[index as usize]
     }
 
-    pub fn set_byte(&mut self, index: u16, value: u8) {
+    pub fn get_byte_mut(&mut self, index: u16) -> &mut u8 {
+        assert_index!(index as usize, self.array.len());
+        &mut self.array[index as usize]
+    }
+
+    pub fn get_word(&self, index: u16) -> u16 {
+        assert_index!(index as usize, self.array.len());
+        ((self.array[index as usize + 1] as u16) << 8) | (self.array[index as usize] as u16)
+    }
+
+    pub fn write_byte(&mut self, index: u16, value: u8) {
         assert_index!(index as usize, self.array.len());
         self.array[index as usize] = value;
     }
 
-    pub fn set_bytes(&mut self, index: u16, values: &[u8]) {
+    pub fn write_bytes(&mut self, index: u16, values: &[u8]) {
         let (start, end) = (index as usize, index as usize + values.len());
 
         // Check if both are in bounds
@@ -56,23 +66,23 @@ mod tests {
 
     #[test]
     #[should_panic]
-    fn test_assert_read_byte() {
-        let mut memory = Memory::new(48000);
-        memory.read_byte(50000);
+    fn test_assert_get_byte() {
+        let memory = Memory::new(48000);
+        memory.get_byte(50000);
     }
 
     #[test]
     #[should_panic]
     fn test_assert_set_byte() {
         let mut memory = Memory::new(48000);
-        memory.set_byte(50000, 2);
+        memory.write_byte(50000, 2);
     }
 
     #[test]
     fn test_assert_set_bytes() {
         let mut memory = Memory::default();
         let array: Vec<u8> = vec![0; 10];
-        memory.set_bytes(50, &array);
+        memory.write_bytes(50, &array);
     }
 
     #[test]
@@ -80,6 +90,6 @@ mod tests {
     fn test_assert_set_bytes_fail() {
         let mut memory = Memory::default();
         let array: Vec<u8> = vec![0; 10];
-        memory.set_bytes(65530, &array);
+        memory.write_bytes(65530, &array);
     }
 }

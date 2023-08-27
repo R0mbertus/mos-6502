@@ -1,12 +1,14 @@
+use crate::memory::Memory;
+
 pub struct Status {
-    pub carry: bool,
-    pub zero: bool,
-    pub disable_interrupt: bool,
-    pub decimal: bool,
-    pub brk: bool,
-    pub unused: bool,
-    pub overflow: bool,
     pub negative: bool,
+    pub overflow: bool,
+    pub unused: bool, 
+    pub brk: bool,
+    pub decimal: bool,
+    pub interrupt: bool,
+    pub zero: bool,
+    pub carry: bool  
 }
 
 impl Default for Status {
@@ -18,24 +20,48 @@ impl Default for Status {
 impl Status {
     fn new() -> Self {
         Status {
-            carry: false,
-            zero: false,
-            disable_interrupt: false,
-            decimal: false,
-            brk: false,
-            unused: true,
-            overflow: false,
             negative: false,
+            overflow: false,
+            unused: true,
+            brk: false,
+            decimal: false,
+            interrupt: false,
+            zero: false,
+            carry: false,
+        }
+    }
+
+    pub fn to_binary(&self) -> u8 {
+        (self.negative  as u8) << 7 |
+        (self.overflow  as u8) << 6 |
+        (self.unused    as u8) << 5 |
+        (self.brk       as u8) << 4 |
+        (self.decimal   as u8) << 3 |
+        (self.interrupt as u8) << 2 |
+        (self.zero      as u8) << 1 |
+        self.carry      as u8
+    }
+
+    pub fn from_binary(status_binary: u8) -> Status {
+        Status { 
+            negative:  (status_binary & 0x8) != 0, 
+            overflow:  (status_binary & 0x7) != 0, 
+            unused:    (status_binary & 0x6) != 0, 
+            brk:       (status_binary & 0x5) != 0, 
+            decimal:   (status_binary & 0x4) != 0, 
+            interrupt: (status_binary & 0x3) != 0, 
+            zero:      (status_binary & 0x2) != 0, 
+            carry:     (status_binary & 0x1) != 0, 
         }
     }
 }
 
 pub struct Registers {
-    pub x: u8,                // x-register
-    pub y: u8,                // y-register
-    pub accumilator: u8,      // Accumulator register
-    pub stack_pointer: u8,    // stack pointer
-    pub program_counter: u16, // program counter
+    pub x: u8,           // x-register
+    pub y: u8,           // y-register
+    pub accumulator: u8, // Accumulator register
+    pub sp: u8,          // stack pointer
+    pub pc: u16,         // program counter
     pub status: Status,
 }
 
@@ -50,10 +76,22 @@ impl Registers {
         Registers {
             x: 0,
             y: 0,
-            accumilator: 0,
-            stack_pointer: 0,
-            program_counter: 0,
+            accumulator: 0,
+            sp: 0,
+            pc: 0,
             status: Status::default(),
         }
+    }
+
+    pub fn push(&mut self, value: u8, memory: &mut Memory) {
+        assert!(self.sp < 100);
+        memory.write_byte(0x1ff - self.sp as u16, value);
+        self.sp = self.sp.wrapping_add(1);
+    }
+
+    pub fn pop(&mut self, memory: &Memory) -> u8 {
+        assert!(self.sp > 0);
+        self.sp = self.sp.wrapping_sub(1);
+        memory.get_byte(0x1ff - self.sp as u16)
     }
 }

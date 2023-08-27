@@ -3,8 +3,8 @@ use crate::memory::Memory;
 use crate::registers::{Registers, Status};
 
 pub struct CPU {
-    memory: Memory,
-    registers: Registers,
+    pub memory: Memory,
+    pub registers: Registers,
 }
 
 impl Default for CPU {
@@ -21,371 +21,341 @@ impl CPU {
         }
     }
 
-    pub fn decode_and_execute(&mut self) -> bool {
-        let raw_opcode: u8 = self.memory.read_byte(self.registers.program_counter);
-        let opcode = match Instruction::decode(raw_opcode) {
-            Some(x) => x,
-            None => panic!("Couldn't decode {raw_opcode} to valid opcode."),
-        };
+    pub fn step(&mut self) {
+        if let Some(instruction) = self.fetch() {
+            self.execute(instruction);
+        }
+    }
 
-        let pc: u16 = self.registers.program_counter.wrapping_add(1);
-        self.registers.program_counter = self
-            .registers
-            .program_counter
-            .wrapping_add(opcode.addressing_mode().extra_bytes());
+    pub fn run(&mut self) {
+        while let Some(instruction) = self.fetch() {
+            self.execute(instruction);
+        }
+    }
 
-        match opcode {
-            Instruction::ADC(am) => {
-                CPU::adc(&mut self.registers, am.get_data(&self.memory, pc) as u8);
+    fn fetch(&mut self) -> Option<Instruction> {
+        Instruction::decode(self.memory.get_byte(self.registers.pc))
+    }
+
+    fn execute(&mut self, instruction: Instruction) {
+        let index = instruction
+            .addressing_mode()
+            .get_index(&self.memory, &mut self.registers);
+
+        match instruction {
+            Instruction::ADC(_) => {
+                Instruction::adc(
+                    &mut self.registers.accumulator,
+                    &mut self.registers.status,
+                    self.memory.get_byte(index),
+                );
             }
-            Instruction::AND(am) => {
-                CPU::and(&mut self.registers, am.get_data(&self.memory, pc) as u8);
+            Instruction::AND(_) => {
+                Instruction::and(
+                    &mut self.registers.accumulator,
+                    &mut self.registers.status,
+                    self.memory.get_byte(index),
+                );
             }
-            Instruction::ASL(am) => {
-                CPU::asl(&mut self.registers, am.get_address_u8(&self.memory, pc));
+            Instruction::ASL(_) => {
+                Instruction::asl(&mut self.registers.status, self.memory.get_byte_mut(index));
             }
-            Instruction::BCC(am) => {
+            Instruction::BCC(_) => {
                 let condition = !self.registers.status.carry;
-                CPU::branch(
-                    &mut self.registers,
+                Instruction::branch(
+                    &mut self.registers.pc,
                     condition,
-                    am.get_data(&self.memory, pc),
+                    self.memory.get_word(index),
                 );
             }
-            Instruction::BCS(am) => {
+            Instruction::BCS(_) => {
                 let condition = self.registers.status.carry;
-                CPU::branch(
-                    &mut self.registers,
+                Instruction::branch(
+                    &mut self.registers.pc,
                     condition,
-                    am.get_data(&self.memory, pc),
+                    self.memory.get_word(index),
                 );
             }
-            Instruction::BEQ(am) => {
+            Instruction::BEQ(_) => {
                 let condition = self.registers.status.zero;
-                CPU::branch(
-                    &mut self.registers,
+                Instruction::branch(
+                    &mut self.registers.pc,
                     condition,
-                    am.get_data(&self.memory, pc),
+                    self.memory.get_word(index),
                 );
             }
-            Instruction::BIT(am) => {
-                CPU::bit(&mut self.registers, am.get_data(&self.memory, pc) as u8);
+            Instruction::BIT(_) => {
+                Instruction::bit(
+                    &mut self.registers.accumulator,
+                    &mut self.registers.status,
+                    self.memory.get_byte(index),
+                );
             }
-            Instruction::BMI(am) => {
+            Instruction::BMI(_) => {
                 let condition = self.registers.status.negative;
-                CPU::branch(
-                    &mut self.registers,
+                Instruction::branch(
+                    &mut self.registers.pc,
                     condition,
-                    am.get_data(&self.memory, pc),
+                    self.memory.get_word(index),
                 );
             }
-            Instruction::BNE(am) => {
+            Instruction::BNE(_) => {
                 let condition = !self.registers.status.zero;
-                CPU::branch(
-                    &mut self.registers,
+                Instruction::branch(
+                    &mut self.registers.pc,
                     condition,
-                    am.get_data(&self.memory, pc),
+                    self.memory.get_word(index),
                 );
             }
-            Instruction::BPL(am) => {
+            Instruction::BPL(_) => {
                 let condition = !self.registers.status.negative;
-                CPU::branch(
-                    &mut self.registers,
+                Instruction::branch(
+                    &mut self.registers.pc,
                     condition,
-                    am.get_data(&self.memory, pc),
+                    self.memory.get_word(index),
                 );
             }
-            Instruction::BRK(_am) => {
-                CPU::brk(&mut self.registers);
+            Instruction::BRK(_) => {
+                Instruction::brk(&mut self.registers, &mut self.memory);
             }
-            Instruction::BVC(am) => {
+            Instruction::BVC(_) => {
                 let condition = !self.registers.status.overflow;
-                CPU::branch(
-                    &mut self.registers,
+                Instruction::branch(
+                    &mut self.registers.pc,
                     condition,
-                    am.get_data(&self.memory, pc),
+                    self.memory.get_word(index),
                 );
             }
-            Instruction::BVS(am) => {
+            Instruction::BVS(_) => {
                 let condition = self.registers.status.overflow;
-                CPU::branch(
-                    &mut self.registers,
+                Instruction::branch(
+                    &mut self.registers.pc,
                     condition,
-                    am.get_data(&self.memory, pc),
+                    self.memory.get_word(index),
                 );
             }
-            Instruction::CLC(_am) => {
+            Instruction::CLC(_) => {
                 self.registers.status.carry = false;
             }
-            Instruction::CLD(_am) => {
+            Instruction::CLD(_) => {
                 self.registers.status.decimal = false;
             }
-            Instruction::CLI(_am) => {
-                self.registers.status.disable_interrupt = false;
+            Instruction::CLI(_) => {
+                self.registers.status.interrupt = false;
             }
-            Instruction::CLV(_am) => {
+            Instruction::CLV(_) => {
                 self.registers.status.overflow = false;
             }
-            Instruction::CMP(am) => {
-                let value_lhs = self.registers.accumilator;
-                CPU::compare(
-                    &mut self.registers,
+            Instruction::CMP(_) => {
+                let value_lhs = self.registers.accumulator;
+                Instruction::compare(
+                    &mut self.registers.status,
                     value_lhs,
-                    am.get_data(&self.memory, pc) as u8,
+                    self.memory.get_byte(index),
                 );
             }
-            Instruction::CPX(am) => {
+            Instruction::CPX(_) => {
                 let value_lhs = self.registers.x;
-                CPU::compare(
-                    &mut self.registers,
+                Instruction::compare(
+                    &mut self.registers.status,
                     value_lhs,
-                    am.get_data(&self.memory, pc) as u8,
+                    self.memory.get_byte(index),
                 );
             }
-            Instruction::CPY(am) => {
+            Instruction::CPY(_) => {
                 let value_lhs = self.registers.y;
-                CPU::compare(
-                    &mut self.registers,
+                Instruction::compare(
+                    &mut self.registers.status,
                     value_lhs,
-                    am.get_data(&self.memory, pc) as u8,
+                    self.memory.get_byte(index),
                 );
             }
-            Instruction::DEC(am) => {
-                CPU::decrement(&mut self.registers.status, am.get_address_u8(&self.memory, pc));
+            Instruction::DEC(_) => {
+                Instruction::decrement(&mut self.registers.status, self.memory.get_byte_mut(index));
             }
-            Instruction::DEX(_am) => {
-                CPU::decrement(&mut self.registers.status, &mut self.registers.x);
+            Instruction::DEX(_) => {
+                Instruction::decrement(&mut self.registers.status, &mut self.registers.x);
             }
-            Instruction::DEY(_am) => {
-                CPU::decrement(&mut self.registers.status, &mut self.registers.y);
+            Instruction::DEY(_) => {
+                Instruction::decrement(&mut self.registers.status, &mut self.registers.y);
             }
-            Instruction::EOR(am) => {
-                CPU::eor(&mut self.registers, am.get_data(&self.memory, pc) as u8);
+            Instruction::EOR(_) => {
+                Instruction::eor(
+                    &mut self.registers.accumulator,
+                    &mut self.registers.status,
+                    self.memory.get_byte(index),
+                );
             }
-            Instruction::INC(am) => {
-                CPU::increment(&mut self.registers.status, am.get_address_u8(&self.memory, pc));
+            Instruction::INC(_) => {
+                Instruction::increment(&mut self.registers.status, self.memory.get_byte_mut(index));
             }
-            Instruction::INX(_am) => {
-                CPU::increment(&mut self.registers.status, &mut self.registers.x);
+            Instruction::INX(_) => {
+                Instruction::increment(&mut self.registers.status, &mut self.registers.x);
             }
-            Instruction::INY(_am) => {
-                CPU::increment(&mut self.registers.status, &mut self.registers.y);
+            Instruction::INY(_) => {
+                Instruction::increment(&mut self.registers.status, &mut self.registers.y);
             }
-            Instruction::JMP(am) => {
-                CPU::jmp(&mut self.registers, am.get_data(&self.memory, pc));
+            Instruction::JMP(_) => {
+                self.registers.pc = self.memory.get_word(index);
             }
-            Instruction::JSR(am) => {
-                CPU::jsr(&mut self.registers, am.get_data(&self.memory, pc));
+            Instruction::JSR(_) => {
+                let value = self.memory.get_word(index);
+                Instruction::jsr(&mut self.registers, &mut self.memory, value);
             }
-            Instruction::LDA(am) => {
-                self.registers.accumilator = am.get_data(&self.memory, pc) as u8;
+            Instruction::LDA(_) => {
+                self.registers.accumulator = self.memory.get_word(index) as u8;
             }
-            Instruction::LDX(am) => {
-                self.registers.x = am.get_data(&self.memory, pc) as u8;
+            Instruction::LDX(_) => {
+                self.registers.x = self.memory.get_word(index) as u8;
             }
-            Instruction::LDY(am) => {
-                self.registers.y = am.get_data(&self.memory, pc) as u8;
+            Instruction::LDY(_) => {
+                self.registers.y = self.memory.get_word(index) as u8;
             }
-            Instruction::LSR(am) => {
-                CPU::lsr(&mut self.registers, am.get_address_u8(&self.memory, pc));
+            Instruction::LSR(_) => {
+                Instruction::lsr(&mut self.registers.status, self.memory.get_byte_mut(index));
             }
-            Instruction::NOP(_am) => {}
-            Instruction::ORA(am) => {
-                CPU::ora(&mut self.registers, am.get_data(&self.memory, pc) as u8);
+            Instruction::NOP(_) => {}
+            Instruction::ORA(_) => {
+                Instruction::ora(
+                    &mut self.registers.accumulator,
+                    &mut self.registers.status,
+                    self.memory.get_byte(index),
+                );
             }
-            Instruction::PHA(am) => {
-                unimplemented!()
+            Instruction::PHA(_) => {
+                self.registers.push(self.registers.accumulator, &mut self.memory);
             }
-            Instruction::PHP(am) => {
-                unimplemented!()
+            Instruction::PHP(_) => {
+                self.registers.push(self.registers.status.to_binary(), &mut self.memory);
             }
-            Instruction::PLA(am) => {
-                unimplemented!()
+            Instruction::PLA(_) => {
+                self.registers.accumulator = self.registers.pop(&mut self.memory);
             }
-            Instruction::PLP(am) => {
-                unimplemented!()
+            Instruction::PLP(_) => {
+                let value = self.registers.pop(&mut self.memory);
+                self.registers.status = Status::from_binary(value);
             }
-            Instruction::ROL(am) => {
-                CPU::rol(&mut self.registers, am.get_address_u8(&self.memory, pc));
+            Instruction::ROL(_) => {
+                Instruction::rol(&mut self.registers.status, self.memory.get_byte_mut(index));
             }
-            Instruction::ROR(am) => {
-                CPU::ror(&mut self.registers, am.get_address_u8(&self.memory, pc));
+            Instruction::ROR(_) => {
+                Instruction::ror(&mut self.registers.status, self.memory.get_byte_mut(index));
             }
-            Instruction::RTI(am) => {
-                unimplemented!()
+            Instruction::RTI(_) => {
+                Instruction::rti(&mut self.registers, &self.memory);
             }
-            Instruction::RTS(am) => {
-                unimplemented!()
+            Instruction::RTS(_) => {
+                Instruction::rts(&mut self.registers, &self.memory);
             }
-            Instruction::SBC(am) => {
-                CPU::sbc(&mut self.registers, am.get_data(&self.memory, pc) as u8);
+            Instruction::SBC(_) => {
+                Instruction::sbc(
+                    &mut self.registers.accumulator,
+                    &mut self.registers.status,
+                    self.memory.get_byte(index),
+                );
             }
-            Instruction::SEC(_am) => {
+            Instruction::SEC(_) => {
                 self.registers.status.carry = true;
             }
-            Instruction::SED(_am) => {
+            Instruction::SED(_) => {
                 self.registers.status.decimal = true;
             }
-            Instruction::SEI(_am) => {
-                self.registers.status.disable_interrupt = true;
+            Instruction::SEI(_) => {
+                self.registers.status.interrupt = true;
             }
-            Instruction::STA(am) => {
-                *am.get_address_u8(&self.memory, pc) = self.registers.accumilator;
+            Instruction::STA(_) => {
+                *self.memory.get_byte_mut(index) = self.registers.accumulator;
             }
-            Instruction::STX(am) => {
-                *am.get_address_u8(&self.memory, pc) = self.registers.x;
+            Instruction::STX(_) => {
+                *self.memory.get_byte_mut(index) = self.registers.x;
             }
-            Instruction::STY(am) => {
-                *am.get_address_u8(&self.memory, pc) = self.registers.y;
+            Instruction::STY(_) => {
+                *self.memory.get_byte_mut(index) = self.registers.y;
             }
-            Instruction::TAX(_am) => {
-                CPU::transfer(&mut self.registers.status, self.registers.accumilator, &mut self.registers.x);
+            Instruction::TAX(_) => {
+                Instruction::transfer(
+                    &mut self.registers.status,
+                    self.registers.accumulator,
+                    &mut self.registers.x,
+                );
             }
-            Instruction::TAY(_am) => {
-                CPU::transfer(&mut self.registers.status, self.registers.accumilator, &mut self.registers.y);
+            Instruction::TAY(_) => {
+                Instruction::transfer(
+                    &mut self.registers.status,
+                    self.registers.accumulator,
+                    &mut self.registers.y,
+                );
             }
-            Instruction::TSX(_am) => {
-                CPU::transfer(&mut self.registers.status, self.registers.stack_pointer, &mut self.registers.x);
+            Instruction::TSX(_) => {
+                Instruction::transfer(
+                    &mut self.registers.status,
+                    self.registers.sp,
+                    &mut self.registers.x,
+                );
             }
-            Instruction::TXA(_am) => {
-                CPU::transfer(&mut self.registers.status, self.registers.x, &mut self.registers.accumilator);
+            Instruction::TXA(_) => {
+                Instruction::transfer(
+                    &mut self.registers.status,
+                    self.registers.x,
+                    &mut self.registers.accumulator,
+                );
             }
-            Instruction::TXS(_am) => {
-                CPU::txs(&mut self.registers);
+            Instruction::TXS(_) => {
+                Instruction::txs(&mut self.registers);
             }
-            Instruction::TYA(_am) => {
-                CPU::transfer(&mut self.registers.status, self.registers.y, &mut self.registers.accumilator);
+            Instruction::TYA(_) => {
+                Instruction::transfer(
+                    &mut self.registers.status,
+                    self.registers.y,
+                    &mut self.registers.accumulator,
+                );
             }
         }
-
-        unimplemented!()
     }
+}
 
-    // TODO: add digit mode
-    fn adc(registers: &mut Registers, value: u8) {
-        let carry_old = registers.status.carry as u8;
-        let (result, carry) = registers.accumilator.wrapping_add(carry_old).overflowing_add(value);
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-        registers.status.carry = carry;
-        registers.status.negative = (result & 0x80) != 0;
-        registers.status.zero = result == 0;
-        registers.status.overflow = (registers.accumilator > 127 && value > 127 && result < 128)
-            || (registers.accumilator < 128 && carry_old < 128 && result > 127);
+    #[test]
+    pub fn and() {
+        let mut cpu = CPU::default();
 
-        registers.accumilator = result;
-    }
+        cpu.registers.accumulator = 0;
+        Instruction::and(
+            &mut cpu.registers.accumulator,
+            &mut cpu.registers.status,
+            0xff,
+        );
+        assert_eq!(cpu.registers.accumulator, 0);
+        assert!(cpu.registers.status.zero);
+        assert!(!cpu.registers.status.negative);
 
-    fn and(registers: &mut Registers, value: u8) {
-        registers.accumilator &= value;
+        cpu.registers.accumulator = 0xff;
+        Instruction::and(&mut cpu.registers.accumulator, &mut cpu.registers.status, 0);
+        assert_eq!(cpu.registers.accumulator, 0);
+        assert!(cpu.registers.status.zero);
+        assert!(!cpu.registers.status.negative);
 
-        registers.status.zero = registers.accumilator == 0;
-        registers.status.negative = (registers.accumilator & 0x80) != 0;
-    }
+        cpu.registers.accumulator = 0xff;
+        Instruction::and(
+            &mut cpu.registers.accumulator,
+            &mut cpu.registers.status,
+            0x0f,
+        );
+        assert_eq!(cpu.registers.accumulator, 0x0f);
+        assert!(!cpu.registers.status.zero);
+        assert!(!cpu.registers.status.negative);
 
-    fn asl(registers: &mut Registers, mem_value: &mut u8) {
-        registers.status.carry = (*mem_value & 0x80) != 0;
-        registers.status.negative = (*mem_value & 0x40) != 0;
-        registers.status.zero = *mem_value == 0x80;
-
-        *mem_value >>= 1;
-    }
-
-    fn branch(registers: &mut Registers, condition: bool, value: u16) {
-        if condition {
-            registers.program_counter = value;
-        }
-    }
-
-    fn bit(registers: &mut Registers, value: u8) {
-        registers.status.zero = (registers.accumilator & value) == 0;
-        registers.status.overflow = (value & 0x40) != 0;
-        registers.status.negative = (value & 0x80) != 0;
-    }
-
-    //TODO: implement stack
-    fn brk(registers: &mut Registers) {
-        unimplemented!();
-    }
-
-    fn compare(registers: &mut Registers, value_lhs: u8, value_rhs: u8) {
-        let result = value_lhs.wrapping_sub(value_rhs);
-        registers.status.zero = value_lhs == value_rhs;
-        registers.status.negative = result & 0x80 != 0;
-        registers.status.carry = value_lhs >= value_rhs;
-    }
-
-    fn decrement(status: &mut Status, mem_value: &mut u8) {
-        let result = mem_value.wrapping_sub(1);
-        status.negative = (result & 0x80) != 0;
-        status.zero = result == 0;
-        *mem_value = result;
-    }
-
-    fn eor(registers: &mut Registers, value: u8) {
-        registers.accumilator ^= value;
-        registers.status.zero = registers.accumilator == 0;
-        registers.status.negative = (registers.accumilator & 0x80) != 0
-    }
-
-    fn increment(status: &mut Status, mem_value: &mut u8) {
-        let result = mem_value.wrapping_add(1);
-        status.negative = (result & 0x80) != 0;
-        status.zero = result == 0;
-        *mem_value = result;
-    }
-
-    fn jmp(registers: &mut Registers, value: u16) {
-        registers.program_counter = value;
-    }
-
-    //TODO: implement stack
-    fn jsr(registers: &mut Registers, value: u16) {
-        unimplemented!()
-    }
-
-    fn lsr(registers: &mut Registers, mem_value: &mut u8) {
-        registers.status.carry = (*mem_value & 0x1) != 0;
-        registers.status.negative = false;
-        *mem_value >>= 1;
-        registers.status.zero = *mem_value == 0;
-    }
-
-    fn ora(registers: &mut Registers, value: u8) {
-        registers.accumilator |= value;
-        registers.status.zero = registers.accumilator == 0;
-        registers.status.negative = (registers.accumilator & 0x80) != 0;
-    }
-
-    fn rol(registers: &mut Registers, mem_value: &mut u8) {
-        registers.status.carry = (*mem_value & 0x80) != 0;
-        registers.status.negative = (*mem_value & 0x40) != 0;
-        *mem_value = mem_value.rotate_left(1);
-        registers.status.zero = *mem_value == 0;
-    }
-
-    fn ror(registers: &mut Registers, mem_value: &mut u8) {
-        registers.status.carry = (*mem_value & 0x80) != 0;
-        registers.status.negative = (*mem_value & 0x40) != 0;
-        *mem_value = mem_value.rotate_right(1);
-        registers.status.zero = *mem_value == 0;
-    }
-
-    fn sbc(registers: &mut Registers, value: u8) {
-        let not_carry = !registers.status.carry as u8;
-        let result = registers.accumilator.wrapping_sub(value).wrapping_sub(not_carry);
-        registers.status.carry = result > registers.accumilator;
-        registers.status.overflow = (not_carry == 0 && value > 127) && registers.accumilator < 128 && result > 127
-            || (registers.accumilator > 127) && (value > 127) && result < 128;
-        registers.accumilator = result;
-    }
-
-    fn transfer(status: &mut Status, value_lhs: u8, value_rhs: &mut u8) {
-        status.zero = value_lhs == 0;
-        status.negative = (value_lhs & 0x80) != 0;
-        *value_rhs = value_lhs;
-    }
-
-    fn txs(registers: &mut Registers) {
-        registers.stack_pointer = registers.x;
+        cpu.registers.accumulator = 0xff;
+        Instruction::and(
+            &mut cpu.registers.accumulator,
+            &mut cpu.registers.status,
+            0x80,
+        );
+        assert_eq!(cpu.registers.accumulator, 0x80);
+        assert!(!cpu.registers.status.zero);
+        assert!(cpu.registers.status.negative);
     }
 }
