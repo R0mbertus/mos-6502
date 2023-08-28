@@ -3,12 +3,12 @@ use crate::memory::Memory;
 pub struct Status {
     pub negative: bool,
     pub overflow: bool,
-    pub unused: bool, 
+    pub unused: bool,
     pub brk: bool,
     pub decimal: bool,
     pub interrupt: bool,
     pub zero: bool,
-    pub carry: bool  
+    pub carry: bool,
 }
 
 impl Default for Status {
@@ -22,7 +22,7 @@ impl Status {
         Status {
             negative: false,
             overflow: false,
-            unused: true,
+            unused: false,
             brk: false,
             decimal: false,
             interrupt: false,
@@ -32,26 +32,26 @@ impl Status {
     }
 
     pub fn to_binary(&self) -> u8 {
-        (self.negative  as u8) << 7 |
-        (self.overflow  as u8) << 6 |
-        (self.unused    as u8) << 5 |
-        (self.brk       as u8) << 4 |
-        (self.decimal   as u8) << 3 |
-        (self.interrupt as u8) << 2 |
-        (self.zero      as u8) << 1 |
-        self.carry      as u8
+        (self.negative as u8) << 7
+            | (self.overflow as u8) << 6
+            | (self.unused as u8) << 5
+            | (self.brk as u8) << 4
+            | (self.decimal as u8) << 3
+            | (self.interrupt as u8) << 2
+            | (self.zero as u8) << 1
+            | self.carry as u8
     }
 
     pub fn from_binary(status_binary: u8) -> Status {
-        Status { 
-            negative:  (status_binary & 0x8) != 0, 
-            overflow:  (status_binary & 0x7) != 0, 
-            unused:    (status_binary & 0x6) != 0, 
-            brk:       (status_binary & 0x5) != 0, 
-            decimal:   (status_binary & 0x4) != 0, 
-            interrupt: (status_binary & 0x3) != 0, 
-            zero:      (status_binary & 0x2) != 0, 
-            carry:     (status_binary & 0x1) != 0, 
+        Status {
+            negative: (status_binary & 0x8) != 0,
+            overflow: (status_binary & 0x7) != 0,
+            unused: (status_binary & 0x6) != 0,
+            brk: (status_binary & 0x5) != 0,
+            decimal: (status_binary & 0x4) != 0,
+            interrupt: (status_binary & 0x3) != 0,
+            zero: (status_binary & 0x2) != 0,
+            carry: (status_binary & 0x1) != 0,
         }
     }
 }

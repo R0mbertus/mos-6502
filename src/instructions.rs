@@ -3,7 +3,7 @@ use crate::{
     registers::{Registers, Status},
 };
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub enum AddressingMode {
     Accumulator,
     Implied,
@@ -41,7 +41,7 @@ impl AddressingMode {
 
     pub fn get_index(&self, memory: &Memory, registers: &mut Registers) -> u16 {
         let data_start = registers.pc.wrapping_add(1);
-        registers.pc = self.bytes_count();
+        registers.pc += self.bytes_count();
 
         match self {
             Self::Accumulator | Self::Implied => 0,
@@ -59,13 +59,18 @@ impl AddressingMode {
             Self::IndirectY => {
                 (memory.get_byte(memory.get_byte(data_start) as u16) + registers.y) as u16
             }
-            Self::Relative => 0,
+            Self::Relative => {
+                let res = memory.get_byte(data_start);
+                let sign_extend = if res & 0x80 == 0x80 { 0xffu8 } else { 0x0 };
+                u16::from_le_bytes([res, sign_extend])
+            },
         }
     }
 }
 
 macro_rules! addressing_instructions {
     ($($instruction:ident),*) => {
+        #[derive(Debug)]
         pub enum Instruction {
             $(
                 $instruction(AddressingMode),
@@ -393,7 +398,7 @@ impl Instruction {
 
     pub fn branch(pc: &mut u16, condition: bool, value: u16) {
         if condition {
-            *pc = value;
+            *pc += value;
         }
     }
 
@@ -402,7 +407,7 @@ impl Instruction {
         status.overflow = (value & 0x40) != 0;
         status.negative = (value & 0x80) != 0;
     }
-  
+
     pub fn brk(registers: &mut Registers, memory: &mut Memory) {
         registers.push((registers.pc >> 8) as u8, memory);
         registers.push(registers.pc as u8, memory);
@@ -445,6 +450,12 @@ impl Instruction {
         registers.push((registers.pc >> 8) as u8, memory);
         registers.push(registers.pc as u8, memory);
         registers.pc = value;
+    }
+
+    pub fn load(status: &mut Status, destination: &mut u8, value: u8) {
+        status.zero = value == 0;
+        status.negative = (value & 0x80) != 0;
+        *destination = value;
     }
 
     pub fn lsr(status: &mut Status, mem_value: &mut u8) {
@@ -490,7 +501,9 @@ impl Instruction {
         let result = accumulator.wrapping_sub(value).wrapping_sub(not_carry);
         status.carry = result > *accumulator;
         status.overflow = (not_carry == 0 && value > 127) && *accumulator < 128 && result > 127
-            || (*accumulator > 127) && (value > 127) && result < 128;
+            || (*accumulator > 127) && (0u8.wrapping_sub(value).wrapping_sub(not_carry) > 127) && result < 128;
+        status.negative = (result & 0x80) != 0;
+        status.zero = result == 0;
         *accumulator = result;
     }
 

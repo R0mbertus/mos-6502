@@ -65,7 +65,7 @@ impl CPU {
                 Instruction::branch(
                     &mut self.registers.pc,
                     condition,
-                    self.memory.get_word(index),
+                    index,
                 );
             }
             Instruction::BCS(_) => {
@@ -73,7 +73,7 @@ impl CPU {
                 Instruction::branch(
                     &mut self.registers.pc,
                     condition,
-                    self.memory.get_word(index),
+                    index,
                 );
             }
             Instruction::BEQ(_) => {
@@ -81,7 +81,7 @@ impl CPU {
                 Instruction::branch(
                     &mut self.registers.pc,
                     condition,
-                    self.memory.get_word(index),
+                    index,
                 );
             }
             Instruction::BIT(_) => {
@@ -96,7 +96,7 @@ impl CPU {
                 Instruction::branch(
                     &mut self.registers.pc,
                     condition,
-                    self.memory.get_word(index),
+                    index,
                 );
             }
             Instruction::BNE(_) => {
@@ -104,7 +104,7 @@ impl CPU {
                 Instruction::branch(
                     &mut self.registers.pc,
                     condition,
-                    self.memory.get_word(index),
+                    index,
                 );
             }
             Instruction::BPL(_) => {
@@ -112,7 +112,7 @@ impl CPU {
                 Instruction::branch(
                     &mut self.registers.pc,
                     condition,
-                    self.memory.get_word(index),
+                    index,
                 );
             }
             Instruction::BRK(_) => {
@@ -123,7 +123,7 @@ impl CPU {
                 Instruction::branch(
                     &mut self.registers.pc,
                     condition,
-                    self.memory.get_word(index),
+                    index,
                 );
             }
             Instruction::BVS(_) => {
@@ -131,7 +131,7 @@ impl CPU {
                 Instruction::branch(
                     &mut self.registers.pc,
                     condition,
-                    self.memory.get_word(index),
+                    index,
                 );
             }
             Instruction::CLC(_) => {
@@ -196,20 +196,32 @@ impl CPU {
                 Instruction::increment(&mut self.registers.status, &mut self.registers.y);
             }
             Instruction::JMP(_) => {
-                self.registers.pc = self.memory.get_word(index);
+                self.registers.pc = index;
             }
             Instruction::JSR(_) => {
-                let value = self.memory.get_word(index);
-                Instruction::jsr(&mut self.registers, &mut self.memory, value);
+                // let value = self.memory.get_word();
+                Instruction::jsr(&mut self.registers, &mut self.memory, index);
             }
             Instruction::LDA(_) => {
-                self.registers.accumulator = self.memory.get_word(index) as u8;
+                Instruction::load(
+                    &mut self.registers.status,
+                    &mut self.registers.accumulator,
+                    self.memory.get_byte(index),
+                );
             }
             Instruction::LDX(_) => {
-                self.registers.x = self.memory.get_word(index) as u8;
+                Instruction::load(
+                    &mut self.registers.status,
+                    &mut self.registers.x,
+                    self.memory.get_byte(index),
+                );
             }
             Instruction::LDY(_) => {
-                self.registers.y = self.memory.get_word(index) as u8;
+                Instruction::load(
+                    &mut self.registers.status,
+                    &mut self.registers.y,
+                    self.memory.get_byte(index),
+                );
             }
             Instruction::LSR(_) => {
                 Instruction::lsr(&mut self.registers.status, self.memory.get_byte_mut(index));
@@ -223,10 +235,12 @@ impl CPU {
                 );
             }
             Instruction::PHA(_) => {
-                self.registers.push(self.registers.accumulator, &mut self.memory);
+                self.registers
+                    .push(self.registers.accumulator, &mut self.memory);
             }
             Instruction::PHP(_) => {
-                self.registers.push(self.registers.status.to_binary(), &mut self.memory);
+                self.registers
+                    .push(self.registers.status.to_binary(), &mut self.memory);
             }
             Instruction::PLA(_) => {
                 self.registers.accumulator = self.registers.pop(&mut self.memory);
