@@ -243,9 +243,9 @@ impl Instruction {
             // LDX -- Load Index X with Memory
             0xA2 => Some(Instruction::LDX(AddressingMode::Immediate)),
             0xA6 => Some(Instruction::LDX(AddressingMode::ZeroPage)),
-            0xB6 => Some(Instruction::LDX(AddressingMode::ZeroPageX)),
+            0xB6 => Some(Instruction::LDX(AddressingMode::ZeroPageY)),
             0xAE => Some(Instruction::LDX(AddressingMode::Absolute)),
-            0xBE => Some(Instruction::LDX(AddressingMode::AbsoluteX)),
+            0xBE => Some(Instruction::LDX(AddressingMode::AbsoluteY)),
 
             // LDY -- Load Index Y with Memory
             0xA0 => Some(Instruction::LDY(AddressingMode::Immediate)),
