@@ -1,6 +1,6 @@
 use crate::instructions::Instruction;
 use crate::memory::Memory;
-use crate::registers::{Registers, Status};
+use crate::registers::Registers;
 
 pub struct CPU {
     pub memory: Memory,
@@ -199,7 +199,6 @@ impl CPU {
                 self.registers.pc = index;
             }
             Instruction::JSR(_) => {
-                // let value = self.memory.get_word();
                 Instruction::jsr(&mut self.registers, &mut self.memory, index);
             }
             Instruction::LDA(_) => {
@@ -243,11 +242,10 @@ impl CPU {
                     .push(self.registers.status.to_binary(), &mut self.memory);
             }
             Instruction::PLA(_) => {
-                self.registers.accumulator = self.registers.pop(&mut self.memory);
+                Instruction::pla(&mut self.registers, &self.memory);
             }
             Instruction::PLP(_) => {
-                let value = self.registers.pop(&mut self.memory);
-                self.registers.status = Status::from_binary(value);
+                Instruction::plp(&mut self.registers, &self.memory);
             }
             Instruction::ROL(_) => {
                 Instruction::rol(&mut self.registers.status, self.memory.get_byte_mut(index));
@@ -331,45 +329,25 @@ impl CPU {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::fs::read;
+
+    fn load_bin(file_name: &str) -> Option<Vec<u8>> {
+        // Load the binary file from disk
+        match read(format!("tests/bin/{}.bin", file_name)) {
+            Ok(data) => Some(data),
+            Err(err) => {
+                println!("Error reading {}.bin: {}", file_name, err);
+                None
+            }
+        }
+    }
 
     #[test]
-    pub fn and() {
+    pub fn functional_test_no_decimal() {
+        let program = load_bin("6502_functional_test").unwrap();
         let mut cpu = CPU::default();
-
-        cpu.registers.accumulator = 0;
-        Instruction::and(
-            &mut cpu.registers.accumulator,
-            &mut cpu.registers.status,
-            0xff,
-        );
-        assert_eq!(cpu.registers.accumulator, 0);
-        assert!(cpu.registers.status.zero);
-        assert!(!cpu.registers.status.negative);
-
-        cpu.registers.accumulator = 0xff;
-        Instruction::and(&mut cpu.registers.accumulator, &mut cpu.registers.status, 0);
-        assert_eq!(cpu.registers.accumulator, 0);
-        assert!(cpu.registers.status.zero);
-        assert!(!cpu.registers.status.negative);
-
-        cpu.registers.accumulator = 0xff;
-        Instruction::and(
-            &mut cpu.registers.accumulator,
-            &mut cpu.registers.status,
-            0x0f,
-        );
-        assert_eq!(cpu.registers.accumulator, 0x0f);
-        assert!(!cpu.registers.status.zero);
-        assert!(!cpu.registers.status.negative);
-
-        cpu.registers.accumulator = 0xff;
-        Instruction::and(
-            &mut cpu.registers.accumulator,
-            &mut cpu.registers.status,
-            0x80,
-        );
-        assert_eq!(cpu.registers.accumulator, 0x80);
-        assert!(!cpu.registers.status.zero);
-        assert!(cpu.registers.status.negative);
+        cpu.memory.write_bytes(0x0a, &program);
+        cpu.registers.pc = 0x400;
+        cpu.run();
     }
 }

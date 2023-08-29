@@ -47,17 +47,17 @@ impl AddressingMode {
             Self::Accumulator | Self::Implied => 0,
             Self::Immediate => data_start,
             Self::Absolute => memory.get_word(data_start),
-            Self::AbsoluteX => memory.get_word(data_start) + (registers.x as u16),
-            Self::AbsoluteY => memory.get_word(data_start) + (registers.y as u16),
+            Self::AbsoluteX => memory.get_word(data_start).wrapping_add(registers.x as u16),
+            Self::AbsoluteY => memory.get_word(data_start).wrapping_add(registers.y as u16),
             Self::Indirect => memory.get_word(memory.get_word(data_start)),
             Self::ZeroPage => memory.get_byte(data_start) as u16,
-            Self::ZeroPageX => (memory.get_byte(data_start) + registers.x) as u16,
-            Self::ZeroPageY => (memory.get_byte(data_start) + registers.y) as u16,
+            Self::ZeroPageX => (memory.get_byte(data_start).wrapping_add(registers.x)) as u16,
+            Self::ZeroPageY => (memory.get_byte(data_start).wrapping_add(registers.y)) as u16,
             Self::IndirectX => {
-                (memory.get_byte((memory.get_byte(data_start) + registers.x) as u16)) as u16
+                (memory.get_byte((memory.get_byte(data_start).wrapping_add(registers.x)) as u16)) as u16
             }
             Self::IndirectY => {
-                (memory.get_byte(memory.get_byte(data_start) as u16) + registers.y) as u16
+                (memory.get_byte(memory.get_byte(data_start) as u16).wrapping_add(registers.y)) as u16
             }
             Self::Relative => {
                 let res = memory.get_byte(data_start);
@@ -262,7 +262,7 @@ impl Instruction {
             0x5E => Some(Instruction::LSR(AddressingMode::AbsoluteX)),
 
             // NOP -- No Operation
-            0xEA => Some(Instruction::NOP(AddressingMode::Relative)),
+            0xEA => Some(Instruction::NOP(AddressingMode::Implied)),
 
             // ORA -- OR Memory with Accumulator
             0x09 => Some(Instruction::ORA(AddressingMode::Immediate)),
@@ -398,7 +398,7 @@ impl Instruction {
 
     pub fn branch(pc: &mut u16, condition: bool, value: u16) {
         if condition {
-            *pc += value;
+            *pc = pc.wrapping_add(value);
         }
     }
 
@@ -409,12 +409,12 @@ impl Instruction {
     }
 
     pub fn brk(registers: &mut Registers, memory: &mut Memory) {
+        registers.pc = registers.pc.wrapping_add(1);
         registers.push((registers.pc >> 8) as u8, memory);
         registers.push(registers.pc as u8, memory);
         registers.push(registers.status.to_binary(), memory);
 
         registers.status.interrupt = true;
-        registers.status.brk = false;
 
         registers.pc = ((memory.get_byte(0xFFFF) as u16) << 8) | memory.get_byte(0xFFFE) as u16;
     }
@@ -447,6 +447,7 @@ impl Instruction {
     }
 
     pub fn jsr(registers: &mut Registers, memory: &mut Memory, value: u16) {
+        registers.pc = registers.pc.wrapping_sub(1);
         registers.push((registers.pc >> 8) as u8, memory);
         registers.push(registers.pc as u8, memory);
         registers.pc = value;
@@ -469,6 +470,17 @@ impl Instruction {
         *accumulator |= value;
         status.zero = *accumulator == 0;
         status.negative = (*accumulator & 0x80) != 0;
+    }
+
+    pub fn pla(registers: &mut Registers, memory: &Memory) {
+        registers.accumulator = registers.pop(&memory);
+        registers.status.zero = registers.accumulator == 0;
+        registers.status.negative = (registers.accumulator & 0x80) != 0;
+    }
+
+    pub fn plp(registers: &mut Registers, memory: &Memory) {
+        let value = registers.pop(memory);
+        registers.status = Status::from_binary(value);
     }
 
     pub fn rol(status: &mut Status, mem_value: &mut u8) {
@@ -494,8 +506,10 @@ impl Instruction {
     pub fn rts(registers: &mut Registers, memory: &Memory) {
         registers.pc = registers.pop(memory) as u16;
         registers.pc |= (registers.pop(memory) as u16) << 8;
+        registers.pc = registers.pc.wrapping_add(1);
     }
 
+    //TODO: add digit mode
     pub fn sbc(accumulator: &mut u8, status: &mut Status, value: u8) {
         let not_carry = !status.carry as u8;
         let result = accumulator.wrapping_sub(value).wrapping_sub(not_carry);

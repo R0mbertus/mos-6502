@@ -1,4 +1,4 @@
-const DEFAULT_MEM_SIZE: usize = 65536;
+const DEFAULT_MEM_SIZE: usize = 0x10001;
 
 // Macro for checking if index is in memory range
 macro_rules! assert_index {

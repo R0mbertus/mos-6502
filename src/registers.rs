@@ -22,8 +22,8 @@ impl Status {
         Status {
             negative: false,
             overflow: false,
-            unused: false,
-            brk: false,
+            unused: true,
+            brk: true,
             decimal: false,
             interrupt: false,
             zero: false,
@@ -44,12 +44,12 @@ impl Status {
 
     pub fn from_binary(status_binary: u8) -> Status {
         Status {
-            negative: (status_binary & 0x8) != 0,
-            overflow: (status_binary & 0x7) != 0,
-            unused: (status_binary & 0x6) != 0,
-            brk: (status_binary & 0x5) != 0,
-            decimal: (status_binary & 0x4) != 0,
-            interrupt: (status_binary & 0x3) != 0,
+            negative: (status_binary & 0x80) != 0,
+            overflow: (status_binary & 0x40) != 0,
+            unused: true,
+            brk: true,
+            decimal: (status_binary & 0x8) != 0,
+            interrupt: (status_binary & 0x4) != 0,
             zero: (status_binary & 0x2) != 0,
             carry: (status_binary & 0x1) != 0,
         }
@@ -84,14 +84,29 @@ impl Registers {
     }
 
     pub fn push(&mut self, value: u8, memory: &mut Memory) {
-        assert!(self.sp < 100);
-        memory.write_byte(0x1ff - self.sp as u16, value);
-        self.sp = self.sp.wrapping_add(1);
+        memory.write_byte(0x100 + self.sp as u16, value);
+        self.sp = self.sp.wrapping_sub(1);
     }
 
     pub fn pop(&mut self, memory: &Memory) -> u8 {
-        assert!(self.sp > 0);
-        self.sp = self.sp.wrapping_sub(1);
-        memory.get_byte(0x1ff - self.sp as u16)
+        self.sp = self.sp.wrapping_add(1);
+        memory.get_byte(0x100 + self.sp as u16)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    pub fn to_binary() {
+        let status = Status::new();
+        assert_eq!(status.to_binary(), 0x30);
+    }
+
+    #[test]
+    pub fn from_binary() {
+        let status = Status::from_binary(0x80);
+        assert_eq!(status.negative, true);
     }
 }
