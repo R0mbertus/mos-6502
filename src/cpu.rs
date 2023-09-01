@@ -1,4 +1,4 @@
-use crate::instructions::{Instruction, AddressingMode};
+use crate::instructions::{AddressingMode, Instruction};
 use crate::memory::Memory;
 use crate::registers::Registers;
 
@@ -41,7 +41,7 @@ impl CPU {
         let index = instruction
             .addressing_mode()
             .get_index(&self.memory, &mut self.registers);
-        
+
         match instruction {
             Instruction::ADC(_) => {
                 Instruction::adc(
@@ -60,34 +60,21 @@ impl CPU {
             Instruction::ASL(_) => {
                 if *instruction.addressing_mode() == AddressingMode::Accumulator {
                     Instruction::asl(&mut self.registers.status, &mut self.registers.accumulator);
-                }
-                else {
+                } else {
                     Instruction::asl(&mut self.registers.status, self.memory.get_byte_mut(index));
                 }
             }
             Instruction::BCC(_) => {
                 let condition = !self.registers.status.carry;
-                Instruction::branch(
-                    &mut self.registers.pc,
-                    condition,
-                    index,
-                );
+                Instruction::branch(&mut self.registers.pc, condition, index);
             }
             Instruction::BCS(_) => {
                 let condition = self.registers.status.carry;
-                Instruction::branch(
-                    &mut self.registers.pc,
-                    condition,
-                    index,
-                );
+                Instruction::branch(&mut self.registers.pc, condition, index);
             }
             Instruction::BEQ(_) => {
                 let condition = self.registers.status.zero;
-                Instruction::branch(
-                    &mut self.registers.pc,
-                    condition,
-                    index,
-                );
+                Instruction::branch(&mut self.registers.pc, condition, index);
             }
             Instruction::BIT(_) => {
                 Instruction::bit(
@@ -98,46 +85,26 @@ impl CPU {
             }
             Instruction::BMI(_) => {
                 let condition = self.registers.status.negative;
-                Instruction::branch(
-                    &mut self.registers.pc,
-                    condition,
-                    index,
-                );
+                Instruction::branch(&mut self.registers.pc, condition, index);
             }
             Instruction::BNE(_) => {
                 let condition = !self.registers.status.zero;
-                Instruction::branch(
-                    &mut self.registers.pc,
-                    condition,
-                    index,
-                );
+                Instruction::branch(&mut self.registers.pc, condition, index);
             }
             Instruction::BPL(_) => {
                 let condition = !self.registers.status.negative;
-                Instruction::branch(
-                    &mut self.registers.pc,
-                    condition,
-                    index,
-                );
+                Instruction::branch(&mut self.registers.pc, condition, index);
             }
             Instruction::BRK(_) => {
                 Instruction::brk(&mut self.registers, &mut self.memory);
             }
             Instruction::BVC(_) => {
                 let condition = !self.registers.status.overflow;
-                Instruction::branch(
-                    &mut self.registers.pc,
-                    condition,
-                    index,
-                );
+                Instruction::branch(&mut self.registers.pc, condition, index);
             }
             Instruction::BVS(_) => {
                 let condition = self.registers.status.overflow;
-                Instruction::branch(
-                    &mut self.registers.pc,
-                    condition,
-                    index,
-                );
+                Instruction::branch(&mut self.registers.pc, condition, index);
             }
             Instruction::CLC(_) => {
                 self.registers.status.carry = false;
@@ -230,8 +197,7 @@ impl CPU {
             Instruction::LSR(_) => {
                 if *instruction.addressing_mode() == AddressingMode::Accumulator {
                     Instruction::lsr(&mut self.registers.status, &mut self.registers.accumulator);
-                }
-                else {
+                } else {
                     Instruction::lsr(&mut self.registers.status, self.memory.get_byte_mut(index));
                 }
             }
@@ -260,16 +226,14 @@ impl CPU {
             Instruction::ROL(_) => {
                 if *instruction.addressing_mode() == AddressingMode::Accumulator {
                     Instruction::rol(&mut self.registers.status, &mut self.registers.accumulator);
-                }
-                else {
+                } else {
                     Instruction::rol(&mut self.registers.status, self.memory.get_byte_mut(index));
                 }
             }
             Instruction::ROR(_) => {
                 if *instruction.addressing_mode() == AddressingMode::Accumulator {
                     Instruction::ror(&mut self.registers.status, &mut self.registers.accumulator);
-                }
-                else {
+                } else {
                     Instruction::ror(&mut self.registers.status, self.memory.get_byte_mut(index));
                 }
             }
@@ -380,8 +344,10 @@ mod tests {
         let mut cpu = CPU::default();
         cpu.memory.write_bytes(0x4000, &program);
         cpu.registers.pc = 0x400;
-        
-        while cpu.registers.pc != 0x45C0 { cpu.step(); }
+
+        while cpu.registers.pc != 0x45C0 {
+            cpu.step();
+        }
 
         assert_eq!(cpu.memory.get_byte(0x210), 0xFF);
     }

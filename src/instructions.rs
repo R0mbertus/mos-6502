@@ -56,14 +56,14 @@ impl AddressingMode {
             Self::IndirectX => {
                 memory.get_word((memory.get_byte(data_start).wrapping_add(registers.x)) as u16)
             }
-            Self::IndirectY => {
-                memory.get_word(memory.get_byte(data_start) as u16).wrapping_add(registers.y as u16)
-            }
+            Self::IndirectY => memory
+                .get_word(memory.get_byte(data_start) as u16)
+                .wrapping_add(registers.y as u16),
             Self::Relative => {
                 let res = memory.get_byte(data_start);
                 let sign_extend = if res & 0x80 == 0x80 { 0xffu8 } else { 0x0 };
                 u16::from_le_bytes([res, sign_extend])
-            },
+            }
         }
     }
 }
@@ -471,7 +471,7 @@ impl Instruction {
     }
 
     pub fn pla(registers: &mut Registers, memory: &Memory) {
-        registers.accumulator = registers.pop(&memory);
+        registers.accumulator = registers.pop(memory);
         registers.status.zero = registers.accumulator == 0;
         registers.status.negative = (registers.accumulator & 0x80) != 0;
     }
