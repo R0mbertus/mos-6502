@@ -22,7 +22,7 @@ impl Status {
         Status {
             negative: false,
             overflow: false,
-            unused: false,
+            unused: true,
             brk: false,
             decimal: false,
             interrupt: false,
@@ -101,7 +101,8 @@ mod tests {
     #[test]
     pub fn to_binary() {
         let status = Status::new();
-        assert_eq!(status.to_binary(), 0x30);
+
+        assert_eq!(status.to_binary(), 0x20);
     }
 
     #[test]

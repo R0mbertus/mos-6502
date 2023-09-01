@@ -34,7 +34,6 @@ impl CPU {
     }
 
     fn fetch(&mut self) -> Option<Instruction> {
-        println!("[Fetch] - pc: {:#04X}, opcode: {:#02X}", self.registers.pc, self.memory.get_byte(self.registers.pc));
         Instruction::decode(self.memory.get_byte(self.registers.pc))
     }
 
@@ -364,14 +363,16 @@ mod tests {
     }
 
     // Compiled without decimal
-    // #[test]
-    // pub fn functional_test() {
-    //     let program = load_bin("6502_functional_test").unwrap();
-    //     let mut cpu = CPU::default();
-    //     cpu.memory.write_bytes(0x0a, &program);
-    //     cpu.registers.pc = 0x400;
-    //     cpu.run();
-    // }
+    #[test]
+    pub fn functional_test() {
+        let program = load_bin("6502_functional_test").unwrap();
+        let mut cpu = CPU::default();
+        cpu.memory.write_bytes(0x0a, &program);
+        cpu.registers.pc = 0x400;
+        while cpu.registers.pc != 0x336D {
+            cpu.step();
+        }
+    }
 
     #[test]
     pub fn all_suite_a() {
