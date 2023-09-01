@@ -3,7 +3,7 @@ use crate::{
     registers::{Registers, Status},
 };
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum AddressingMode {
     Accumulator,
     Implied,
@@ -54,10 +54,10 @@ impl AddressingMode {
             Self::ZeroPageX => (memory.get_byte(data_start).wrapping_add(registers.x)) as u16,
             Self::ZeroPageY => (memory.get_byte(data_start).wrapping_add(registers.y)) as u16,
             Self::IndirectX => {
-                (memory.get_byte((memory.get_byte(data_start).wrapping_add(registers.x)) as u16)) as u16
+                memory.get_word((memory.get_byte(data_start).wrapping_add(registers.x)) as u16)
             }
             Self::IndirectY => {
-                (memory.get_byte(memory.get_byte(data_start) as u16).wrapping_add(registers.y)) as u16
+                memory.get_word(memory.get_byte(data_start) as u16).wrapping_add(registers.y as u16)
             }
             Self::Relative => {
                 let res = memory.get_byte(data_start);
@@ -107,7 +107,7 @@ impl Instruction {
             0x7D => Some(Instruction::ADC(AddressingMode::AbsoluteX)),
             0x79 => Some(Instruction::ADC(AddressingMode::AbsoluteY)),
             0x61 => Some(Instruction::ADC(AddressingMode::IndirectX)),
-            0x71 => Some(Instruction::ADC(AddressingMode::Indirect)),
+            0x71 => Some(Instruction::ADC(AddressingMode::IndirectY)),
 
             // AND -- AND Memory with Accumulator
             0x29 => Some(Instruction::AND(AddressingMode::Immediate)),
@@ -341,7 +341,7 @@ impl Instruction {
 
             // STY -- Store Index Y in Memory
             0x84 => Some(Instruction::STY(AddressingMode::ZeroPage)),
-            0x94 => Some(Instruction::STY(AddressingMode::ZeroPageY)),
+            0x94 => Some(Instruction::STY(AddressingMode::ZeroPageX)),
             0x8C => Some(Instruction::STY(AddressingMode::Absolute)),
 
             // TAX -- Transfer Accumulator to Index X
@@ -369,21 +369,20 @@ impl Instruction {
 
     // TODO: add digit mode
     pub fn adc(accumulator: &mut u8, status: &mut Status, value: u8) {
-        let carry_old = status.carry as u8;
-        let (result, carry) = accumulator.wrapping_add(carry_old).overflowing_add(value);
+        let input_carry = status.carry as u8;
+        let (nc_result, nc_carry) = accumulator.overflowing_add(value);
+        let (result, carry) = nc_result.overflowing_add(input_carry);
 
-        status.carry = carry;
+        status.carry = nc_carry | carry;
         status.negative = (result & 0x80) != 0;
         status.zero = result == 0;
         status.overflow = (*accumulator > 127 && value > 127 && result < 128)
-            || (*accumulator < 128 && carry_old < 128 && result > 127);
-
+            || (*accumulator < 128 && value < 128 && result > 127);
         *accumulator = result;
     }
 
     pub fn and(accumulator: &mut u8, status: &mut Status, value: u8) {
         *accumulator &= value;
-
         status.zero = *accumulator == 0;
         status.negative = (*accumulator & 0x80) != 0;
     }
@@ -391,9 +390,8 @@ impl Instruction {
     pub fn asl(status: &mut Status, mem_value: &mut u8) {
         status.carry = (*mem_value & 0x80) != 0;
         status.negative = (*mem_value & 0x40) != 0;
-        status.zero = *mem_value == 0x80;
-
-        *mem_value >>= 1;
+        *mem_value <<= 1;
+        status.zero = *mem_value == 0;
     }
 
     pub fn branch(pc: &mut u16, condition: bool, value: u16) {
@@ -412,7 +410,7 @@ impl Instruction {
         registers.pc = registers.pc.wrapping_add(1);
         registers.push((registers.pc >> 8) as u8, memory);
         registers.push(registers.pc as u8, memory);
-        registers.push(registers.status.to_binary(), memory);
+        registers.push(registers.status.to_binary() | 0x30, memory);
 
         registers.status.interrupt = true;
 
@@ -484,16 +482,20 @@ impl Instruction {
     }
 
     pub fn rol(status: &mut Status, mem_value: &mut u8) {
+        let input_carry = status.carry as u8;
         status.carry = (*mem_value & 0x80) != 0;
         status.negative = (*mem_value & 0x40) != 0;
-        *mem_value = mem_value.rotate_left(1);
+        *mem_value <<= 1;
+        *mem_value += input_carry;
         status.zero = *mem_value == 0;
     }
 
     pub fn ror(status: &mut Status, mem_value: &mut u8) {
-        status.carry = (*mem_value & 0x80) != 0;
-        status.negative = (*mem_value & 0x40) != 0;
-        *mem_value = mem_value.rotate_right(1);
+        let input_carry = (status.carry as u8) << 7;
+        status.negative = status.carry;
+        status.carry = (*mem_value & 0x1) != 0;
+        *mem_value >>= 1;
+        *mem_value += input_carry;
         status.zero = *mem_value == 0;
     }
 
@@ -507,18 +509,6 @@ impl Instruction {
         registers.pc = registers.pop(memory) as u16;
         registers.pc |= (registers.pop(memory) as u16) << 8;
         registers.pc = registers.pc.wrapping_add(1);
-    }
-
-    //TODO: add digit mode
-    pub fn sbc(accumulator: &mut u8, status: &mut Status, value: u8) {
-        let not_carry = !status.carry as u8;
-        let result = accumulator.wrapping_sub(value).wrapping_sub(not_carry);
-        status.carry = result > *accumulator;
-        status.overflow = (not_carry == 0 && value > 127) && *accumulator < 128 && result > 127
-            || (*accumulator > 127) && (0u8.wrapping_sub(value).wrapping_sub(not_carry) > 127) && result < 128;
-        status.negative = (result & 0x80) != 0;
-        status.zero = result == 0;
-        *accumulator = result;
     }
 
     pub fn transfer(status: &mut Status, value_lhs: u8, value_rhs: &mut u8) {

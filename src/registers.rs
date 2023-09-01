@@ -22,8 +22,8 @@ impl Status {
         Status {
             negative: false,
             overflow: false,
-            unused: true,
-            brk: true,
+            unused: false,
+            brk: false,
             decimal: false,
             interrupt: false,
             zero: false,
@@ -46,8 +46,8 @@ impl Status {
         Status {
             negative: (status_binary & 0x80) != 0,
             overflow: (status_binary & 0x40) != 0,
-            unused: true,
-            brk: true,
+            unused: (status_binary & 0x20) != 0,
+            brk: (status_binary & 0x10) != 0,
             decimal: (status_binary & 0x8) != 0,
             interrupt: (status_binary & 0x4) != 0,
             zero: (status_binary & 0x2) != 0,

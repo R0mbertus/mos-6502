@@ -1,4 +1,4 @@
-use crate::instructions::Instruction;
+use crate::instructions::{Instruction, AddressingMode};
 use crate::memory::Memory;
 use crate::registers::Registers;
 
@@ -34,6 +34,7 @@ impl CPU {
     }
 
     fn fetch(&mut self) -> Option<Instruction> {
+        println!("[Fetch] - pc: {:#04X}, opcode: {:#02X}", self.registers.pc, self.memory.get_byte(self.registers.pc));
         Instruction::decode(self.memory.get_byte(self.registers.pc))
     }
 
@@ -41,7 +42,7 @@ impl CPU {
         let index = instruction
             .addressing_mode()
             .get_index(&self.memory, &mut self.registers);
-
+        
         match instruction {
             Instruction::ADC(_) => {
                 Instruction::adc(
@@ -58,7 +59,12 @@ impl CPU {
                 );
             }
             Instruction::ASL(_) => {
-                Instruction::asl(&mut self.registers.status, self.memory.get_byte_mut(index));
+                if *instruction.addressing_mode() == AddressingMode::Accumulator {
+                    Instruction::asl(&mut self.registers.status, &mut self.registers.accumulator);
+                }
+                else {
+                    Instruction::asl(&mut self.registers.status, self.memory.get_byte_mut(index));
+                }
             }
             Instruction::BCC(_) => {
                 let condition = !self.registers.status.carry;
@@ -223,7 +229,12 @@ impl CPU {
                 );
             }
             Instruction::LSR(_) => {
-                Instruction::lsr(&mut self.registers.status, self.memory.get_byte_mut(index));
+                if *instruction.addressing_mode() == AddressingMode::Accumulator {
+                    Instruction::lsr(&mut self.registers.status, &mut self.registers.accumulator);
+                }
+                else {
+                    Instruction::lsr(&mut self.registers.status, self.memory.get_byte_mut(index));
+                }
             }
             Instruction::NOP(_) => {}
             Instruction::ORA(_) => {
@@ -239,7 +250,7 @@ impl CPU {
             }
             Instruction::PHP(_) => {
                 self.registers
-                    .push(self.registers.status.to_binary(), &mut self.memory);
+                    .push(self.registers.status.to_binary() | 0x30, &mut self.memory);
             }
             Instruction::PLA(_) => {
                 Instruction::pla(&mut self.registers, &self.memory);
@@ -248,10 +259,20 @@ impl CPU {
                 Instruction::plp(&mut self.registers, &self.memory);
             }
             Instruction::ROL(_) => {
-                Instruction::rol(&mut self.registers.status, self.memory.get_byte_mut(index));
+                if *instruction.addressing_mode() == AddressingMode::Accumulator {
+                    Instruction::rol(&mut self.registers.status, &mut self.registers.accumulator);
+                }
+                else {
+                    Instruction::rol(&mut self.registers.status, self.memory.get_byte_mut(index));
+                }
             }
             Instruction::ROR(_) => {
-                Instruction::ror(&mut self.registers.status, self.memory.get_byte_mut(index));
+                if *instruction.addressing_mode() == AddressingMode::Accumulator {
+                    Instruction::ror(&mut self.registers.status, &mut self.registers.accumulator);
+                }
+                else {
+                    Instruction::ror(&mut self.registers.status, self.memory.get_byte_mut(index));
+                }
             }
             Instruction::RTI(_) => {
                 Instruction::rti(&mut self.registers, &self.memory);
@@ -260,10 +281,10 @@ impl CPU {
                 Instruction::rts(&mut self.registers, &self.memory);
             }
             Instruction::SBC(_) => {
-                Instruction::sbc(
+                Instruction::adc(
                     &mut self.registers.accumulator,
                     &mut self.registers.status,
-                    self.memory.get_byte(index),
+                    255 - self.memory.get_byte(index),
                 );
             }
             Instruction::SEC(_) => {
@@ -342,12 +363,25 @@ mod tests {
         }
     }
 
+    // Compiled without decimal
+    // #[test]
+    // pub fn functional_test() {
+    //     let program = load_bin("6502_functional_test").unwrap();
+    //     let mut cpu = CPU::default();
+    //     cpu.memory.write_bytes(0x0a, &program);
+    //     cpu.registers.pc = 0x400;
+    //     cpu.run();
+    // }
+
     #[test]
-    pub fn functional_test_no_decimal() {
-        let program = load_bin("6502_functional_test").unwrap();
+    pub fn all_suite_a() {
+        let program = load_bin("all_suite_a").unwrap();
         let mut cpu = CPU::default();
-        cpu.memory.write_bytes(0x0a, &program);
+        cpu.memory.write_bytes(0x4000, &program);
         cpu.registers.pc = 0x400;
-        cpu.run();
+        
+        while cpu.registers.pc != 0x45C0 { cpu.step(); }
+
+        assert_eq!(cpu.memory.get_byte(0x210), 0xFF);
     }
 }
